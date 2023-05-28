@@ -1,0 +1,120 @@
+     [HttpPost]
+        public IActionResult ChangePassword(ChangePasswordModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                var user = _dbContext.Users.FirstOrDefault(u => u.Username == model.Username && u.Password == model.CurrentPassword);
+
+                if (user != null)
+                {
+                    if (model.NewPassword == model.ConfirmNewPassword)
+                    {
+                        user.Password = model.NewPassword; // Update the password
+
+                        _dbContext.SaveChanges(); // Save the changes to the database
+
+                        HttpContext.Session.Remove("Username");
+
+                        return RedirectToAction("Login");
+                    }
+
+                    ModelState.AddModelError(string.Empty, "New password and confirm password do not match");
+                }
+                else
+                {
+                    ModelState.AddModelError(string.Empty, "Invalid current password");
+                }
+            
+            }
+
+            return View(model);
+        }
+
+ [HttpPost]
+        public IActionResult ResetPassword(string username)
+        {
+            if (ModelState.IsValid)
+            {
+                var user = _dbContext.Users.FirstOrDefault(u => u.Username == username);
+
+                if (user != null)
+                {
+                    string tempPassword = GenerateRandomString(4, "1234567890");
+                    user.Password = tempPassword;
+                    _dbContext.SaveChanges();
+
+                    HttpContext.Session.SetString("Username", user.Username);
+                    TempData["DisplayTempPasswordMessage"] = "Temporary password generated: " + tempPassword;
+
+                    return RedirectToAction("ChangePassword");
+                }
+
+                ModelState.AddModelError(string.Empty, "Username not found");
+            }
+
+            return View();
+        }
+
+        // GET: /Account/Login
+        [HttpGet]
+        public IActionResult Login()
+        {
+            return View();
+        }
+
+
+
+        // POST: /Account/Login
+        [HttpPost]
+        public IActionResult Login(LoginModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                var user = _dbContext.Users.FirstOrDefault(u => u.Username == model.Username && u.Password == model.Password);
+
+                if (user != null)
+                {
+                    // Store user information in session
+                    HttpContext.Session.SetString("UserId", user.Id.ToString());
+                    HttpContext.Session.SetString("Username", user.Username);
+                    // Successful login - Redirect to the Dashboard
+
+
+                    return RedirectToAction("Index", "Home");
+
+                }
+
+                ModelState.AddModelError(string.Empty, "Invalid username or password");
+            }
+
+            return View(model);
+        }
+
+        // GET: /Account/Signup
+        [HttpGet]
+        public IActionResult Signup()
+        {
+            return View();
+        }
+
+        // POST: /Account/Signup
+        [HttpPost]
+        public IActionResult Signup(SignupModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                var user = new User
+                {
+                    Username = model.Username,
+                    Password = model.Password
+                };
+
+                _dbContext.Users.Add(user);
+                _dbContext.SaveChanges();
+
+                // Successful signup
+                return RedirectToAction("Login");
+            }
+
+            return View(model);
+        }
